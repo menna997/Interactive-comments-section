@@ -1,0 +1,220 @@
+@if (deleteConfirmationId() !== null) {
+<div class="delete-modal__backdrop">
+  <section class="delete-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-modal-title"
+    aria-describedby="delete-modal-description">
+    <h2 id="delete-modal-title" class="delete-modal__title">
+      Delete comment
+    </h2>
+
+    <p id="delete-modal-description" class="delete-modal__description">
+      Are you sure you want to delete this comment?
+      This will remove the comment and its replies.
+      This action cannot be undone.
+    </p>
+
+    <div class="delete-modal__actions">
+      <button class="button delete-modal__cancel" type="button" (click)="cancelDelete()">
+        NO, CANCEL
+      </button>
+
+      <button class="button delete-modal__confirm" type="button" (click)="confirmDelete()">
+        YES, DELETE
+      </button>
+    </div>
+  </section>
+</div>
+}
+
+<main class="comments">
+  <h1 class="comments__title">Comments</h1>
+
+  @for (comment of comments(); track comment.id) {
+  <article class="comment">
+
+    <!-- Main comment score -->
+    <div class="comment__score">
+      <button type="button" aria-label="Increase comment score" (click)="updateScore(comment.id, 1)">
+        <img src="/images/icon-plus.svg" alt="" class="score-icon" />
+      </button>
+
+      <span>{{ comment.score }}</span>
+
+      <button type="button" aria-label="Decrease comment score" (click)="updateScore(comment.id, -1)">
+        <img src="/images/icon-minus.svg" alt="" class="score-icon" />
+      </button>
+    </div>
+
+    <div class="comment__body">
+      <header class="comment__header">
+        <div class="comment__author">
+          <img class="comment__avatar" [src]="comment.user.image.png" [alt]="comment.user.username" />
+
+          <strong class="comment__username">
+            {{ comment.user.username }}
+          </strong>
+
+          <span class="comment__date">
+            {{ comment.createdAt }}
+          </span>
+        </div>
+
+        <div class="comment__actions">
+          @if (
+          comment.user.username ===
+          commentsService.currentUser()?.username
+          ) {
+          <!-- Delete comment -->
+          <button class="comment__action comment__action--delete" type="button"
+            (click)="openDeleteConfirmation(comment.id)">
+            <img src="/images/icon-delete.svg" alt="" class="action-icon" />
+            Delete
+          </button>
+
+          <!-- Edit comment -->
+          <button class="comment__action comment__action--edit" type="button"
+            (click)="editComment(comment.id, comment.content)">
+            <img src="/images/icon-edit.svg" alt="" class="action-icon" />
+            Edit
+          </button>
+          }
+
+          <!-- Reply to comment -->
+          <button class="comment__action comment__action--reply" type="button"
+            (click)="replyTo(comment.id, comment.user.username)">
+            <img src="/images/icon-reply.svg" alt="" class="action-icon" />
+            Reply
+          </button>
+        </div>
+      </header>
+
+      <!-- Edit comment form -->
+      @if (editingCommentId() === comment.id) {
+      <form class="edit-form" (ngSubmit)="saveEdit(comment.id)">
+        <label class="sr-only" [for]="'edit-comment-' + comment.id">
+          Edit your comment
+        </label>
+
+        <textarea class="edit-form__textarea" [id]="'edit-comment-' + comment.id" [name]="'edit-comment-' + comment.id"
+          [ngModel]="editedContent()" (ngModelChange)="editedContent.set($event)" required></textarea>
+
+        <div class="edit-form__actions">
+          <button class="button button--cancel" type="button" (click)="cancelEdit()">
+            CANCEL
+          </button>
+
+          <button class="button" type="submit">
+            SAVE
+          </button>
+        </div>
+      </form>
+      } @else {
+      <p class="comment__content">
+        {{ comment.content }}
+      </p>
+      }
+    </div>
+
+    <!-- Replies -->
+    @if (comment.replies.length > 0) {
+    <div class="comment__replies">
+      @for (reply of comment.replies; track reply.id) {
+      <article class="reply">
+
+        <!-- Reply score -->
+        <div class="comment__score">
+          <button type="button" aria-label="Increase reply score" (click)="updateReplyScore(comment.id, reply.id, 1)">
+            <img src="/images/icon-plus.svg" alt="" class="score-icon" />
+          </button>
+
+          <span>{{ reply.score }}</span>
+
+          <button type="button" aria-label="Decrease reply score" (click)="updateReplyScore(comment.id, reply.id, -1)">
+            <img src="/images/icon-minus.svg" alt="" class="score-icon" />
+          </button>
+        </div>
+
+        <div class="reply__body">
+          <header class="comment__header">
+            <div class="comment__author">
+              <img class="comment__avatar" [src]="reply.user.image.png" [alt]="reply.user.username" />
+
+              <strong class="comment__username">
+                {{ reply.user.username }}
+              </strong>
+
+              <span class="comment__date">
+                {{ reply.createdAt }}
+              </span>
+            </div>
+
+            <!-- Reply to another reply -->
+            <button class="comment__action comment__action--reply" type="button"
+              (click)="replyTo(comment.id, reply.user.username)">
+              <img src="/images/icon-reply.svg" alt="" class="action-icon" />
+              Reply
+            </button>
+          </header>
+
+          <p class="comment__content">
+            <strong class="reply__mention">
+              {{ '@' + reply.replyingTo }}
+            </strong>
+
+            {{ reply.content }}
+          </p>
+        </div>
+      </article>
+      }
+    </div>
+    }
+
+    <!-- Reply form -->
+    @if (replyingToId() === comment.id) {
+    <form class="reply-form" (ngSubmit)="submitReply(comment.id)">
+      <img class="comment__avatar" [src]="currentUserImage()" alt="Your avatar" />
+
+      <div class="reply-form__body">
+        <label class="sr-only" [for]="'reply-content-' + comment.id">
+          Write your reply
+        </label>
+
+        <textarea [id]="'reply-content-' + comment.id" name="replyContent" placeholder="Add a reply..." rows="3"
+          [ngModel]="replyContent()" (ngModelChange)="replyContent.set($event)" required></textarea>
+
+        <div class="reply-form__actions">
+          <span class="reply-form__hint">
+            Replying to {{ replyingToUsername() }}
+          </span>
+
+          <div class="reply-form__buttons">
+            <button class="button button--cancel" type="button" (click)="cancelReply()">
+              CANCEL
+            </button>
+
+            <button class="button" type="submit">
+              REPLY
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+    }
+  </article>
+  }
+
+  <!-- Add new comment -->
+  <form class="new-comment" (ngSubmit)="submitComment()">
+    <img class="comment__avatar" [src]="currentUserImage()" alt="Your avatar" />
+
+    <label class="sr-only" for="new-comment-content">
+      Add a comment
+    </label>
+
+    <textarea id="new-comment-content" name="newComment" placeholder="Add a comment..." rows="3"
+      [ngModel]="newCommentContent()" (ngModelChange)="newCommentContent.set($event)" required></textarea>
+
+    <button class="button new-comment__send" type="submit">
+      SEND
+    </button>
+  </form>
+</main>
